@@ -1,0 +1,40 @@
+auth:
+    filter:
+        exclude-url-suffixes: htm,html,js,css,map,ico,ttf,woff,png
+        exclude-urls: /,/auth/login,/auth/logout,/registry/machine,/version
+    password: sentinel
+    username: sentinel
+logging:
+    file: ${user.home}/logs/csp/sentinel-dashboard.log
+    level:
+        org:
+            springframework:
+                web: INFO
+    pattern:
+        file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+sentinel:
+    dashboard:
+        version: ${project.version}
+spring:
+    http:
+        encoding:
+            charset: UTF-8
+            enabled: true
+            force: true
+    application:
+        name: oauth2-resource
+    datasource:
+        type: com.zaxxer.hikari.HikariDataSource
+        url: jdbc:mysql://192.168.163.130:3306/sentinel?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT%2B8
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        username: root
+        password: admin123
+        hikari:
+            minimum-idle: 5
+            idle-timeout: 600000
+            maximum-pool-size: 10
+            auto-commit: true
+            pool-name: MyHikariCP
+            max-lifetime: 1800000
+            connection-timeout: 30000
+            connection-test-query: SELECT 1

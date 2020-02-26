@@ -17,13 +17,14 @@ package com.alibaba.csp.sentinel.dashboard.controller;
 
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.SimpleWebAuthServiceImpl;
-import com.alibaba.csp.sentinel.dashboard.config.DashboardConfig;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
+import com.alibaba.csp.sentinel.dashboard.domain.SentinelUser;
+import com.alibaba.csp.sentinel.dashboard.service.SentinelUserService;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,39 +41,50 @@ public class AuthController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
 
-    @Value("${auth.username:sentinel}")
-    private String authUsername;
-
-    @Value("${auth.password:sentinel}")
-    private String authPassword;
-
     @Autowired
     private AuthService<HttpServletRequest> authService;
 
+    @Autowired
+    private SentinelUserService sentinelUserService;
+
+    @Autowired
+    private BCryptPasswordEncoder encoder;
+
     @PostMapping("/login")
     public Result<AuthService.AuthUser> login(HttpServletRequest request, String username, String password) {
-        if (StringUtils.isNotBlank(DashboardConfig.getAuthUsername())) {
-            authUsername = DashboardConfig.getAuthUsername();
+        // 校验参数
+        if (StringUtils.isBlank(username)){
+            LOGGER.error("Login failed: 用户名为空！");
+            return Result.ofFail(-1, "用户名为空！");
+        }
+        if (StringUtils.isBlank(password)){
+            LOGGER.error("Login failed: 密码为空！");
+            return Result.ofFail(-1, "密码为空！");
         }
 
-        if (StringUtils.isNotBlank(DashboardConfig.getAuthPassword())) {
-            authPassword = DashboardConfig.getAuthPassword();
+        // 获取用户名信息
+        Result<SentinelUser> sentinelUserResult = sentinelUserService.selectByUsername(username);
+        if (!sentinelUserResult.isSuccess()){
+            // 错误返回
+            LOGGER.error("Login failed: " + sentinelUserResult.getMsg());
+            return Result.ofFail(-1, sentinelUserResult.getMsg());
         }
 
-        /*
-         * If auth.username or auth.password is blank(set in application.properties or VM arguments),
-         * auth will pass, as the front side validate the input which can't be blank,
-         * so user can input any username or password(both are not blank) to login in that case.
-         */
-        if (StringUtils.isNotBlank(authUsername) && !authUsername.equals(username)
-                || StringUtils.isNotBlank(authPassword) && !authPassword.equals(password)) {
-            LOGGER.error("Login failed: Invalid username or password, username=" + username);
-            return Result.ofFail(-1, "Invalid username or password");
-        }
+        SentinelUser data = sentinelUserResult.getData();
+        if (!encoder.matches(password, data.getPassword())){
+            // 失败校验
+            LOGGER.error("Login failed: 无效用户名或密码：" + username);
+            return Result.ofFail(-1, "无效用户名或密码！");
 
+        }
+        if (!data.getState().equals(SentinelUser.STATE.ACTIVATED)){
+            LOGGER.error("Login failed: 用户[ "+ username +" ]未启用！");
+            return Result.ofFail(-1, "用户[ "+ username +" ]未启用！");
+        }
         AuthService.AuthUser authUser = new SimpleWebAuthServiceImpl.SimpleWebAuthUserImpl(username);
         request.getSession().setAttribute(SimpleWebAuthServiceImpl.WEB_SESSION_KEY, authUser);
         return Result.ofSuccess(authUser);
+
     }
 
     @PostMapping(value = "/logout")
