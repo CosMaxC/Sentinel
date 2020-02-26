@@ -5,6 +5,7 @@ import com.alibaba.csp.sentinel.dashboard.domain.SentinelUser;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import javax.annotation.Resource;
@@ -43,6 +44,6 @@ public class SentinelUserServiceTest {
 
     @Test
     public void getPassword(){
-//        System.out.println(new BCryptPasswordEncoder().encode("conan123"));
+        System.out.println(new BCryptPasswordEncoder().encode("sentinel"));
     }
 }
